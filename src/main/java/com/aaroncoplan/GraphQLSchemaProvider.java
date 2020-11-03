@@ -6,7 +6,10 @@ import static graphql.Scalars.GraphQLString;
 import graphql.GraphQL;
 import graphql.schema.*;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -25,12 +28,14 @@ public class GraphQLSchemaProvider {
     return this.graphQL;
   }
 
-  private void generateGraphQLObjectDefinitions()
+  private List<GraphQLObjectDefinition> generateGraphQLObjectDefinitions()
     throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
     ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(
       false
     );
     provider.addIncludeFilter(new AssignableTypeFilter(GraphQLObject.class));
+
+    var objectDefinitions = new ArrayList<GraphQLObjectDefinition>();
 
     var results = provider.findCandidateComponents("com.aaroncoplan");
     for (var result : results) {
@@ -42,46 +47,54 @@ public class GraphQLSchemaProvider {
       var graphQLObjectType = objectInstance.generateObjectType();
       var graphQLRootField = objectInstance.generateRootField();
       var graphQLDataFetchers = objectInstance.generateDataFetchers();
+
+      objectDefinitions.add(
+        new GraphQLObjectDefinition(
+          graphQLObjectType,
+          graphQLRootField,
+          graphQLDataFetchers
+        )
+      );
     }
+
+    return objectDefinitions;
   }
 
   @PostConstruct
   public void init()
     throws ClassNotFoundException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-    generateGraphQLObjectDefinitions();
-
-    ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(
-      false
-    );
-    provider.addIncludeFilter(new AssignableTypeFilter(GraphQLObject.class));
-
-    var results = provider.findCandidateComponents("com.aaroncoplan");
-    for (var result : results) {
-      var objectClass = Class.forName(result.getBeanClassName());
-      System.out.println(objectClass);
-    }
-
-    var bookTypeDefinition = new Book().generateObjectType();
-    var bookRootField = new Book().generateRootField();
-    var bookDataFetchers = new Book().generateDataFetchers();
+    var graphQLObjectDefinitions = generateGraphQLObjectDefinitions();
 
     var queryTypeDefinition = GraphQLObjectType
       .newObject()
       .name("Query")
-      .field(bookRootField)
+      .fields(
+        graphQLObjectDefinitions
+          .stream()
+          .map(GraphQLObjectDefinition::getGraphQLRootField)
+          .collect(Collectors.toList())
+      )
       .build();
 
-    var codeRegistry = GraphQLCodeRegistry
-      .newCodeRegistry()
-      .dataFetchers(bookDataFetchers)
-      .build();
+    GraphQLCodeRegistry.Builder codeRegistryBuilder = GraphQLCodeRegistry.newCodeRegistry();
+
+    for (var objectDefinition : graphQLObjectDefinitions) {
+      codeRegistryBuilder =
+        codeRegistryBuilder.dataFetchers(objectDefinition.getDataFetchers());
+    }
 
     var schema = GraphQLSchema
       .newSchema()
       .query(queryTypeDefinition)
-      .additionalType(bookTypeDefinition)
-      .codeRegistry(codeRegistry)
+      .additionalTypes(
+        graphQLObjectDefinitions
+          .stream()
+          .map(GraphQLObjectDefinition::getGraphQLObjectType)
+          .collect(Collectors.toSet())
+      )
+      .codeRegistry(codeRegistryBuilder.build())
       .build();
+
     this.graphQL = GraphQL.newGraphQL(schema).build();
   }
 }
