@@ -3,11 +3,7 @@ package com.aaroncoplan;
 import static graphql.Scalars.GraphQLID;
 import static graphql.Scalars.GraphQLString;
 
-import graphql.GraphQL;
-import graphql.execution.batched.BatchedDataFetcherFactory;
-import graphql.execution.nextgen.BatchedDataFetcher;
 import graphql.schema.*;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -19,35 +15,31 @@ public abstract class GraphQLObject {
     return null;
   }
 
-  public GraphQLCodeRegistry generateDataFetchers() {
-    var fieldDefinitions = this.generateFields();
-
-    return GraphQLCodeRegistry
+  public final GraphQLCodeRegistry generateDataFetchers() {
+    var builder = GraphQLCodeRegistry
       .newCodeRegistry()
       .dataFetcher(
         FieldCoordinates.coordinates("Query", "load_Book"),
-        (DataFetchingEnvironment dataFetchingEnvironment) -> {
-          return new Book();
-        }
-      )
-      .dataFetcher(
-        FieldCoordinates.coordinates("Book", "id"),
-        (DataFetchingEnvironment dataFetchingEnvironment) -> {
-          var book = (Book) dataFetchingEnvironment.getSource();
-          return book.getID();
-        }
-      )
-      .dataFetcher(
-        FieldCoordinates.coordinates("Book", "title"),
-        (DataFetchingEnvironment dataFetchingEnvironment) -> {
-          var book = (Book) dataFetchingEnvironment.getSource();
-          return book.getTitle();
-        }
-      )
-      .build();
+        (DataFetchingEnvironment dataFetchingEnvironment) -> new Book()
+      );
+
+    var fieldDefinitions = this.generateFieldDefinitions();
+    for (FieldDefinition fieldDefinition : fieldDefinitions) {
+      var definition = fieldDefinition.getDefinition();
+      builder =
+        builder.dataFetcher(
+          FieldCoordinates.coordinates(this.getName(), definition.getName()),
+          (DataFetchingEnvironment dataFetchingEnvironment) ->
+            fieldDefinition
+              .getDataGeneratorMethod()
+              .invoke(dataFetchingEnvironment.getSource())
+        );
+    }
+
+    return builder.build();
   }
 
-  public GraphQLFieldDefinition generateRootField() {
+  public final GraphQLFieldDefinition generateRootField() {
     return GraphQLFieldDefinition
       .newFieldDefinition()
       .name("load_" + this.getName())
@@ -62,9 +54,9 @@ public abstract class GraphQLObject {
       .build();
   }
 
-  public GraphQLObjectType generateObjectType() {
+  public final GraphQLObjectType generateObjectType() {
     var fields =
-      this.generateFields()
+      this.generateFieldDefinitions()
         .stream()
         .map(FieldDefinition::getDefinition)
         .collect(Collectors.toList());
@@ -77,7 +69,7 @@ public abstract class GraphQLObject {
       .build();
   }
 
-  private List<FieldDefinition> generateFields() {
+  private List<FieldDefinition> generateFieldDefinitions() {
     return List
       .of(this.getClass().getDeclaredMethods())
       .stream()
