@@ -1,14 +1,16 @@
 package com.aaroncoplan;
 
 import javax.persistence.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.repository.CrudRepository;
 
 @Entity
 public class Author extends GraphQLObject {
 
-  @Transient
-  @Autowired
-  private AuthorRepository authorRepository;
+  public Author() {}
+
+  public Author(String name) {
+    this.name = name;
+  }
 
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
@@ -21,8 +23,8 @@ public class Author extends GraphQLObject {
   }
 
   @Override
-  protected Repository getRepository() {
-    return authorRepository;
+  protected Class<? extends CrudRepository> getRepository() {
+    return AuthorRepository.class;
   }
 
   @GraphQLField(name = "id", type = FieldType.ID)

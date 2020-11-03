@@ -1,9 +1,16 @@
 package com.aaroncoplan;
 
+import org.springframework.data.repository.CrudRepository;
+
 public class Book extends GraphQLObject {
 
   protected String getName() {
     return "Book";
+  }
+
+  @Override
+  protected Class<? extends CrudRepository> getRepository() {
+    return null;
   }
 
   @GraphQLField(name = "id", type = FieldType.ID)

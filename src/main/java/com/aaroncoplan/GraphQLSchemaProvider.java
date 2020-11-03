@@ -11,11 +11,14 @@ import java.util.List;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AbstractClassTestingTypeFilter;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.core.type.filter.AssignableTypeFilter;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -28,7 +31,12 @@ public class GraphQLSchemaProvider {
     return this.graphQL;
   }
 
-  private List<GraphQLObjectDefinition> generateGraphQLObjectDefinitions()
+  @Autowired
+  private ApplicationContext applicationContext;
+
+  private List<GraphQLObjectDefinition> generateGraphQLObjectDefinitions(
+    ApplicationContext applicationContext
+  )
     throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
     ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(
       false
@@ -36,6 +44,7 @@ public class GraphQLSchemaProvider {
     provider.addIncludeFilter(new AssignableTypeFilter(GraphQLObject.class));
 
     var objectDefinitions = new ArrayList<GraphQLObjectDefinition>();
+    var repositoryCache = RepositoryCache.getInstance();
 
     var results = provider.findCandidateComponents("com.aaroncoplan");
     for (var result : results) {
@@ -43,6 +52,14 @@ public class GraphQLSchemaProvider {
         result.getBeanClassName()
       );
       var objectInstance = objectClass.getConstructor().newInstance();
+
+      var repositoryClass = objectInstance.getRepository();
+      var repositoryObject = repositoryClass != null
+        ? applicationContext.getBean(repositoryClass)
+        : null;
+      if (repositoryObject != null) {
+        repositoryCache.insert(objectInstance.getName(), repositoryObject);
+      }
 
       var graphQLObjectType = objectInstance.generateObjectType();
       var graphQLRootField = objectInstance.generateRootField();
@@ -63,7 +80,9 @@ public class GraphQLSchemaProvider {
   @PostConstruct
   public void init()
     throws ClassNotFoundException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-    var graphQLObjectDefinitions = generateGraphQLObjectDefinitions();
+    var graphQLObjectDefinitions = generateGraphQLObjectDefinitions(
+      applicationContext
+    );
 
     var queryTypeDefinition = GraphQLObjectType
       .newObject()

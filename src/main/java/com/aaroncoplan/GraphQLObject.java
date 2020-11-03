@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.data.repository.CrudRepository;
 
 public abstract class GraphQLObject {
 
@@ -17,9 +18,7 @@ public abstract class GraphQLObject {
     return null;
   }
 
-  protected Repository getRepository() {
-    return null;
-  }
+  protected abstract Class<? extends CrudRepository> getRepository();
 
   public final GraphQLCodeRegistry generateDataFetchers() {
     var builder = GraphQLCodeRegistry
@@ -30,12 +29,13 @@ public abstract class GraphQLObject {
           var stringID = (String) dataFetchingEnvironment.getArgument("id");
           var id = Long.parseLong(stringID);
 
-          var repository = this.getRepository();
+          var repositoryCache = RepositoryCache.getInstance();
+          var repository = repositoryCache.lookup(this.getName());
           if (repository == null) {
             return null;
           }
 
-          return repository.findByID(id);
+          return repository.findById(id);
         }
       );
 
