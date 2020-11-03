@@ -17,12 +17,26 @@ public abstract class GraphQLObject {
     return null;
   }
 
+  protected Repository getRepository() {
+    return null;
+  }
+
   public final GraphQLCodeRegistry generateDataFetchers() {
     var builder = GraphQLCodeRegistry
       .newCodeRegistry()
       .dataFetcher(
-        FieldCoordinates.coordinates("Query", "load_Book"),
-        (DataFetchingEnvironment dataFetchingEnvironment) -> new Book()
+        FieldCoordinates.coordinates("Query", "load_" + this.getName()),
+        (DataFetchingEnvironment dataFetchingEnvironment) -> {
+          var stringID = (String) dataFetchingEnvironment.getArgument("id");
+          var id = Long.parseLong(stringID);
+
+          var repository = this.getRepository();
+          if (repository == null) {
+            return null;
+          }
+
+          return repository.findByID(id);
+        }
       );
 
     var fieldDefinitions = this.generateFieldDefinitions();
