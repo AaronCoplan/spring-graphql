@@ -1,17 +1,16 @@
 package com.aaroncoplan;
 
 import graphql.GraphQL;
-import graphql.schema.DataFetchingEnvironment;
-import graphql.schema.GraphQLSchema;
-import graphql.schema.idl.RuntimeWiring;
-import graphql.schema.idl.SchemaGenerator;
-import graphql.schema.idl.SchemaParser;
-import graphql.schema.idl.TypeRuntimeWiring;
+import graphql.schema.*;
+import graphql.schema.idl.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.HashMap;
+
+import static graphql.Scalars.GraphQLID;
+import static graphql.Scalars.GraphQLString;
 
 @Component
 public class GraphQLSchemaProvider {
@@ -25,29 +24,29 @@ public class GraphQLSchemaProvider {
 
     @PostConstruct
     public void init() {
-        var bookTypeDefinition = "type Book { id: ID! \n name: String \n author: Author}";
-        var authorTypeDefinition = "type Author {id: ID! \n name: String}";
-        var queryTypeDefinition = "type Query { books: [Book!]! }";
+        var bookTypeDefinition = GraphQLObjectType.newObject().name("Book")
+                .field(GraphQLFieldDefinition.newFieldDefinition().name("id").type(GraphQLID))
+                .field(GraphQLFieldDefinition.newFieldDefinition().name("name").type(GraphQLString).build())
+                .field(GraphQLFieldDefinition.newFieldDefinition().name("author").type(GraphQLTypeReference.typeRef("Author")).build())
+                .build();
 
-        var schemaDefinitionLanguage = bookTypeDefinition + authorTypeDefinition + queryTypeDefinition;
-        this.graphQL = GraphQL.newGraphQL(buildSchema(schemaDefinitionLanguage)).build();
-    }
+        var authorTypeDefinition = GraphQLObjectType.newObject().name("Author")
+                .field(GraphQLFieldDefinition.newFieldDefinition().name("id").type(GraphQLID).build())
+                .field(GraphQLFieldDefinition.newFieldDefinition().name("name").type(GraphQLString).build())
+                .build();
 
-    private GraphQLSchema buildSchema(String schemaDefinitionLanguage) {
-        var typeRegistry = new SchemaParser().parse(schemaDefinitionLanguage);
-        var runtimeWiring = buildWiring();
+        var queryTypeDefinition = GraphQLObjectType.newObject().name("Query")
+                .field(GraphQLFieldDefinition.newFieldDefinition().name("books")
+                        .type(GraphQLList.list(GraphQLTypeReference.typeRef("Book"))).build()).build();
 
-        return new SchemaGenerator().makeExecutableSchema(typeRegistry, runtimeWiring);
-    }
+        var codeRegistry = GraphQLCodeRegistry.newCodeRegistry().dataFetcher(FieldCoordinates.coordinates("Query", "books"), (DataFetchingEnvironment dataFetchingEnvironment) -> {
+            var data = new HashMap<String, Object>();
+            data.put("id", 1);
+            data.put("name", "Harry Potter");
+            return new Object[]{data};
+        }).build();
 
-    private RuntimeWiring buildWiring() {
-        return RuntimeWiring.newRuntimeWiring()
-                .type(TypeRuntimeWiring.newTypeWiring("Query")
-                        .dataFetcher("books", (DataFetchingEnvironment dataFetchingEnvironment) -> {
-                            var data = new HashMap<String, Object>();
-                            data.put("id", 1);
-                            data.put("name", "Harry Potter");
-                            return new Object[]{data};
-                        })).build();
+        var schema = GraphQLSchema.newSchema().query(queryTypeDefinition).additionalType(bookTypeDefinition).additionalType(authorTypeDefinition).codeRegistry(codeRegistry).build();
+        this.graphQL = GraphQL.newGraphQL(schema).build();
     }
 }
