@@ -23,3 +23,8 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+task format(type: Exec) {
+    executable 'prettier'
+    args '--write', '**/*.java'
+}
