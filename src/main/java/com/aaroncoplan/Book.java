@@ -15,4 +15,9 @@ public class Book extends GraphQLObject {
   public String getTitle() {
     return "Hunger Games";
   }
+
+  @GraphQLField(name = "author", type = FieldType.OBJECT)
+  public Author getAuthor() {
+    return new Author();
+  }
 }
