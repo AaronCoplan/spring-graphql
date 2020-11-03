@@ -6,17 +6,17 @@ import org.springframework.data.repository.CrudRepository;
 @Entity
 public class Author extends GraphQLObject {
 
-  public Author() {}
-
-  public Author(String name) {
-    this.name = name;
-  }
-
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
   private Long ID;
 
   private String name;
+
+  public Author() {}
+
+  public Author(String name) {
+    this.name = name;
+  }
 
   protected String getName() {
     return "Author";

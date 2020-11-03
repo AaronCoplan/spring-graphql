@@ -2,4 +2,4 @@ package com.aaroncoplan;
 
 import org.springframework.data.repository.CrudRepository;
 
-public interface AuthorRepository extends CrudRepository<Author, Long> {}
+public interface BookRepository extends CrudRepository<Book, Long> {}

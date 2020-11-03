@@ -42,6 +42,7 @@ public abstract class GraphQLObject {
     var fieldDefinitions = this.generateFieldDefinitions();
     for (FieldDefinition fieldDefinition : fieldDefinitions) {
       var definition = fieldDefinition.getDefinition();
+
       builder =
         builder.dataFetcher(
           FieldCoordinates.coordinates(this.getName(), definition.getName()),
