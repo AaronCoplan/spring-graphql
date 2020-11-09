@@ -1,24 +1,17 @@
 package com.aaroncoplan;
 
-import static graphql.Scalars.GraphQLID;
-import static graphql.Scalars.GraphQLString;
-
 import graphql.GraphQL;
 import graphql.schema.*;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.core.type.filter.AbstractClassTestingTypeFilter;
-import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.core.type.filter.AssignableTypeFilter;
-import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Component;
 
 @Component
