@@ -2,6 +2,8 @@ plugins {
     id 'org.springframework.boot' version '2.3.2.RELEASE'
     id 'io.spring.dependency-management' version '1.0.8.RELEASE'
     id 'java'
+
+    id 'maven-publish'
 }
 
 group = 'com.aaroncoplan'
@@ -36,4 +38,22 @@ test {
 task format(type: Exec) {
     executable 'prettier'
     args '--write', '**/*.java'
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/AaronCoplan/spring-graphql")
+            credentials {
+                username = System.getenv("USERNAME")
+                password = System.getenv("TOKEN")
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            from(components.java)
+        }
+    }
 }
