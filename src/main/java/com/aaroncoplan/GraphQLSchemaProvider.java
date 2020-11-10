@@ -5,9 +5,11 @@ import graphql.schema.*;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -27,20 +29,61 @@ public class GraphQLSchemaProvider {
   @Autowired
   private ApplicationContext applicationContext;
 
+  private Set<BeanDefinition> findExtensionsOfClass(
+    ApplicationContext applicationContext,
+    Class<?> targetClass,
+    String basePackage
+  ) {
+    ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(
+      false
+    );
+    provider.addIncludeFilter(new AssignableTypeFilter(targetClass));
+
+    return provider.findCandidateComponents(basePackage);
+  }
+
+  private List<GraphQLQueryDefinition> generateGraphQLQueryDefinitions(
+    ApplicationContext applicationContext
+  )
+    throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    var graphQLQueryDefinitionClasses = findExtensionsOfClass(
+      applicationContext,
+      GraphQLQuery.class,
+      "com.aaroncoplan"
+    );
+
+    var queryDefinitions = new ArrayList<GraphQLQueryDefinition>();
+
+    for (var result : graphQLQueryDefinitionClasses) {
+      var queryClass = (Class<? extends GraphQLQuery>) Class.forName(
+        result.getBeanClassName()
+      );
+      var queryInstance = queryClass.getConstructor().newInstance();
+
+      var queryDefinition = queryInstance.generateQueryField();
+      var dataFetchers = queryInstance.generateDataFetchers();
+      queryDefinitions.add(
+        new GraphQLQueryDefinition(queryDefinition, dataFetchers)
+      );
+    }
+
+    return queryDefinitions;
+  }
+
   private List<GraphQLObjectDefinition> generateGraphQLObjectDefinitions(
     ApplicationContext applicationContext
   )
     throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-    ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(
-      false
+    var graphQLObjectDefinitionClasses = findExtensionsOfClass(
+      applicationContext,
+      GraphQLObject.class,
+      "com.aaroncoplan"
     );
-    provider.addIncludeFilter(new AssignableTypeFilter(GraphQLObject.class));
 
     var objectDefinitions = new ArrayList<GraphQLObjectDefinition>();
     var repositoryCache = RepositoryCache.getInstance();
 
-    var results = provider.findCandidateComponents("com.aaroncoplan");
-    for (var result : results) {
+    for (var result : graphQLObjectDefinitionClasses) {
       var objectClass = (Class<? extends GraphQLObject>) Class.forName(
         result.getBeanClassName()
       );
@@ -77,6 +120,10 @@ public class GraphQLSchemaProvider {
       applicationContext
     );
 
+    var graphQLQueryDefinitions = generateGraphQLQueryDefinitions(
+      applicationContext
+    );
+
     var queryTypeDefinition = GraphQLObjectType
       .newObject()
       .name("Query")
@@ -86,6 +133,12 @@ public class GraphQLSchemaProvider {
           .map(GraphQLObjectDefinition::getGraphQLRootField)
           .collect(Collectors.toList())
       )
+      .fields(
+        graphQLQueryDefinitions
+          .stream()
+          .map(GraphQLQueryDefinition::getGraphQLQuery)
+          .collect(Collectors.toList())
+      )
       .build();
 
     GraphQLCodeRegistry.Builder codeRegistryBuilder = GraphQLCodeRegistry.newCodeRegistry();
@@ -93,6 +146,11 @@ public class GraphQLSchemaProvider {
     for (var objectDefinition : graphQLObjectDefinitions) {
       codeRegistryBuilder =
         codeRegistryBuilder.dataFetchers(objectDefinition.getDataFetchers());
+    }
+
+    for (var queryDefinition : graphQLQueryDefinitions) {
+      codeRegistryBuilder =
+        codeRegistryBuilder.dataFetchers(queryDefinition.getDataFetchers());
     }
 
     var schema = GraphQLSchema

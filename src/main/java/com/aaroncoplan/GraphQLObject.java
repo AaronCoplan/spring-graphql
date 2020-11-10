@@ -1,11 +1,8 @@
 package com.aaroncoplan;
 
 import static graphql.Scalars.GraphQLID;
-import static graphql.Scalars.GraphQLString;
 
 import graphql.schema.*;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.repository.CrudRepository;
@@ -98,7 +95,10 @@ public abstract class GraphQLObject {
           }
 
           var name = annotation.name();
-          var type = typeForFieldType(method, annotation.type());
+          var type = GraphQLTypeUtils.typeForFieldType(
+            method,
+            annotation.type()
+          );
 
           return new FieldDefinition(
             GraphQLFieldDefinition
@@ -112,42 +112,5 @@ public abstract class GraphQLObject {
       )
       .filter(Objects::nonNull)
       .collect(Collectors.toList());
-  }
-
-  private GraphQLOutputType typeForFieldType(
-    Method method,
-    FieldType fieldType
-  ) {
-    switch (fieldType) {
-      case ID:
-        return GraphQLID;
-      case STRING:
-        return GraphQLString;
-      case OBJECT:
-        {
-          var returnTypeClass = method.getReturnType();
-          if (GraphQLObject.class.isAssignableFrom(returnTypeClass)) {
-            try {
-              var objectInstance =
-                (
-                  (Class<? extends GraphQLObject>) returnTypeClass
-                ).getConstructor()
-                  .newInstance();
-              return GraphQLTypeReference.typeRef(objectInstance.getName());
-            } catch (
-              InstantiationException
-              | IllegalAccessException
-              | InvocationTargetException
-              | NoSuchMethodException e
-            ) {
-              throw new RuntimeException("Unknown Object type");
-            }
-          } else {
-            throw new RuntimeException("Unknown Object type");
-          }
-        }
-    }
-
-    return null;
   }
 }
