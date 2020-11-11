@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +21,9 @@ import org.springframework.stereotype.Component;
 public class GraphQLSchemaProvider {
 
   private GraphQL graphQL;
+
+  @Value("${springgraphql.basePackage}")
+  private String basePackage;
 
   @Bean
   public GraphQL graphQL() {
@@ -49,7 +53,7 @@ public class GraphQLSchemaProvider {
     var graphQLQueryDefinitionClasses = findExtensionsOfClass(
       applicationContext,
       GraphQLQuery.class,
-      "com.aaroncoplan"
+      basePackage
     );
 
     var queryDefinitions = new ArrayList<GraphQLQueryDefinition>();
@@ -77,7 +81,7 @@ public class GraphQLSchemaProvider {
     var graphQLObjectDefinitionClasses = findExtensionsOfClass(
       applicationContext,
       GraphQLObject.class,
-      "com.aaroncoplan"
+      basePackage
     );
 
     var objectDefinitions = new ArrayList<GraphQLObjectDefinition>();
