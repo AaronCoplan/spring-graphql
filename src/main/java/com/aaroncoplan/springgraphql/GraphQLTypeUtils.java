@@ -3,15 +3,55 @@ package com.aaroncoplan.springgraphql;
 import static graphql.Scalars.GraphQLID;
 import static graphql.Scalars.GraphQLString;
 
-import graphql.schema.GraphQLList;
-import graphql.schema.GraphQLOutputType;
-import graphql.schema.GraphQLTypeReference;
+import graphql.schema.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class GraphQLTypeUtils {
+
+  public static List<GraphQLInputObjectField> inputFieldsForInputType(
+    Method method
+  ) {
+    var inputParameterType = method.getParameterTypes()[0];
+
+    return List
+      .of(inputParameterType.getDeclaredFields())
+      .stream()
+      .map(
+        field -> {
+          var annotation = field.getAnnotation(GraphQLInputField.class);
+          if (annotation == null) {
+            return null;
+          }
+
+          var name = field.getName();
+
+          switch (annotation.type()) {
+            case ID:
+              return GraphQLInputObjectField
+                .newInputObjectField()
+                .name(name)
+                .type(GraphQLID)
+                .build();
+            case STRING:
+              return GraphQLInputObjectField
+                .newInputObjectField()
+                .name(name)
+                .type(GraphQLString)
+                .build();
+          }
+
+          throw new RuntimeException("Unsupported Input Field Type");
+        }
+      )
+      .filter(Objects::nonNull)
+      .collect(Collectors.toList());
+  }
 
   public static GraphQLOutputType typeForFieldType(
     Method method,
@@ -38,7 +78,7 @@ public class GraphQLTypeUtils {
         }
     }
 
-    return null;
+    throw new RuntimeException("Unrecognized Field Type");
   }
 
   private static GraphQLTypeReference typeReferenceForReturnTypeClass(
