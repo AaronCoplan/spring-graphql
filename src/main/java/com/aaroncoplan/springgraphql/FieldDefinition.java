@@ -1,4 +1,4 @@
-package com.aaroncoplan;
+package com.aaroncoplan.springgraphql;
 
 import graphql.schema.GraphQLFieldDefinition;
 import java.lang.reflect.Method;

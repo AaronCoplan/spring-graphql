@@ -1,4 +1,4 @@
-package com.aaroncoplan;
+package com.aaroncoplan.springgraphql;
 
 import graphql.GraphQL;
 import graphql.schema.*;

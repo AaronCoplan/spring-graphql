@@ -1,4 +1,4 @@
-package com.aaroncoplan;
+package com.aaroncoplan.springgraphql;
 
 import java.util.HashMap;
 import java.util.Map;

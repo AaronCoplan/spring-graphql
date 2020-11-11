@@ -1,4 +1,4 @@
-package com.aaroncoplan;
+package com.aaroncoplan.springgraphql;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

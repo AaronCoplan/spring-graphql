@@ -1,4 +1,4 @@
-package com.aaroncoplan;
+package com.aaroncoplan.springgraphql;
 
 import static graphql.Scalars.GraphQLID;
 import static graphql.Scalars.GraphQLString;
