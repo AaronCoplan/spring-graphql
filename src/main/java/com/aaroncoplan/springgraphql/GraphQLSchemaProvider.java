@@ -46,6 +46,34 @@ public class GraphQLSchemaProvider {
     return provider.findCandidateComponents(basePackage);
   }
 
+  private List<GraphQLMutationDefinition> generateGraphQLMutationDefinitions(
+    ApplicationContext applicationContext
+  )
+    throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    var graphQLMutationDefinitionClasses = findExtensionsOfClass(
+      applicationContext,
+      GraphQLMutation.class,
+      basePackage
+    );
+
+    var mutationDefinitions = new ArrayList<GraphQLMutationDefinition>();
+
+    for (var result : graphQLMutationDefinitionClasses) {
+      var mutationClass = (Class<? extends GraphQLMutation>) Class.forName(
+        result.getBeanClassName()
+      );
+      var mutationInstance = mutationClass.getConstructor().newInstance();
+
+      var mutationDefinition = mutationInstance.generateMutationField();
+      var dataFetchers = mutationInstance.generateDataFetchers();
+      mutationDefinitions.add(
+        new GraphQLMutationDefinition(mutationDefinition, dataFetchers)
+      );
+    }
+
+    return mutationDefinitions;
+  }
+
   private List<GraphQLQueryDefinition> generateGraphQLQueryDefinitions(
     ApplicationContext applicationContext
   )
@@ -128,6 +156,10 @@ public class GraphQLSchemaProvider {
       applicationContext
     );
 
+    var graphQLMutationDefinitions = generateGraphQLMutationDefinitions(
+      applicationContext
+    );
+
     var queryTypeDefinition = GraphQLObjectType
       .newObject()
       .name("Query")
@@ -145,6 +177,17 @@ public class GraphQLSchemaProvider {
       )
       .build();
 
+    var mutationTypeDefinition = GraphQLObjectType
+      .newObject()
+      .name("Mutation")
+      .fields(
+        graphQLMutationDefinitions
+          .stream()
+          .map(GraphQLMutationDefinition::getGraphQLMutation)
+          .collect(Collectors.toList())
+      )
+      .build();
+
     GraphQLCodeRegistry.Builder codeRegistryBuilder = GraphQLCodeRegistry.newCodeRegistry();
 
     for (var objectDefinition : graphQLObjectDefinitions) {
@@ -157,9 +200,15 @@ public class GraphQLSchemaProvider {
         codeRegistryBuilder.dataFetchers(queryDefinition.getDataFetchers());
     }
 
+    for (var mutationDefinition : graphQLMutationDefinitions) {
+      codeRegistryBuilder =
+        codeRegistryBuilder.dataFetchers(mutationDefinition.getDataFetchers());
+    }
+
     var schema = GraphQLSchema
       .newSchema()
       .query(queryTypeDefinition)
+      .mutation(mutationTypeDefinition)
       .additionalTypes(
         graphQLObjectDefinitions
           .stream()
