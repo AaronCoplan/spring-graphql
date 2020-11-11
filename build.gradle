@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.aaroncoplan'
-version = '0.2.0'
+version = '0.3.0'
 sourceCompatibility = '11'
 
 repositories {
