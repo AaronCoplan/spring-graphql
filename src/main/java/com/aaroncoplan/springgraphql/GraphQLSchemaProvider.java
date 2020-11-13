@@ -212,18 +212,19 @@ public class GraphQLSchemaProvider {
         codeRegistryBuilder.dataFetchers(mutationDefinition.getDataFetchers());
     }
 
-    this.schema = GraphQLSchema
-      .newSchema()
-      .query(queryTypeDefinition)
-      .mutation(mutationTypeDefinition)
-      .additionalTypes(
-        graphQLObjectDefinitions
-          .stream()
-          .map(GraphQLObjectDefinition::getGraphQLObjectType)
-          .collect(Collectors.toSet())
-      )
-      .codeRegistry(codeRegistryBuilder.build())
-      .build();
+    this.schema =
+      GraphQLSchema
+        .newSchema()
+        .query(queryTypeDefinition)
+        .mutation(mutationTypeDefinition)
+        .additionalTypes(
+          graphQLObjectDefinitions
+            .stream()
+            .map(GraphQLObjectDefinition::getGraphQLObjectType)
+            .collect(Collectors.toSet())
+        )
+        .codeRegistry(codeRegistryBuilder.build())
+        .build();
 
     this.graphQL = GraphQL.newGraphQL(this.schema).build();
   }
