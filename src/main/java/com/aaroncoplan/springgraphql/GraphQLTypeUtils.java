@@ -36,13 +36,13 @@ public class GraphQLTypeUtils {
               return GraphQLInputObjectField
                 .newInputObjectField()
                 .name(name)
-                .type(GraphQLID)
+                .type(GraphQLNonNull.nonNull(GraphQLID))
                 .build();
             case STRING:
               return GraphQLInputObjectField
                 .newInputObjectField()
                 .name(name)
-                .type(GraphQLString)
+                .type(GraphQLNonNull.nonNull(GraphQLString))
                 .build();
           }
 
@@ -74,7 +74,7 @@ public class GraphQLTypeUtils {
           var returnTypeClass = (Class<?>) parameterizedType.getActualTypeArguments()[0];
 
           var typeReference = typeReferenceForReturnTypeClass(returnTypeClass);
-          return GraphQLList.list(typeReference);
+          return GraphQLNonNull.nonNull(GraphQLList.list(typeReference));
         }
     }
 
