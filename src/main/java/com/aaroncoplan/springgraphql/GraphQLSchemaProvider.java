@@ -22,12 +22,19 @@ public class GraphQLSchemaProvider {
 
   private GraphQL graphQL;
 
+  private GraphQLSchema schema;
+
   @Value("${springgraphql.basePackage}")
   private String basePackage;
 
   @Bean
   public GraphQL graphQL() {
     return this.graphQL;
+  }
+
+  @Bean
+  public GraphQLSchema graphQLSchema() {
+    return this.schema;
   }
 
   @Autowired
@@ -205,7 +212,7 @@ public class GraphQLSchemaProvider {
         codeRegistryBuilder.dataFetchers(mutationDefinition.getDataFetchers());
     }
 
-    var schema = GraphQLSchema
+    this.schema = GraphQLSchema
       .newSchema()
       .query(queryTypeDefinition)
       .mutation(mutationTypeDefinition)
@@ -218,6 +225,6 @@ public class GraphQLSchemaProvider {
       .codeRegistry(codeRegistryBuilder.build())
       .build();
 
-    this.graphQL = GraphQL.newGraphQL(schema).build();
+    this.graphQL = GraphQL.newGraphQL(this.schema).build();
   }
 }
